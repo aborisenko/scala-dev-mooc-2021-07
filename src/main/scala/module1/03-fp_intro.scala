@@ -168,7 +168,36 @@ object hof{
       def flatMap[B](f: T => Option[B]): Option[B] = this match {
           case Option.Some(v) => f(v)
           case Option.None => Option.None
+    /**
+     *
+     * Реализовать метод printIfAny, который будет печатать значение, если оно есть
+     */
+    def printIfAny(): Unit = this match {
+      case Option.Some(v) => printf(v.toString)
+      case Option.None => ()
+    }
+
+    /**
+     *
+     * Реализовать метод filter, который будет возвращать не пустой Option
+     * в случае если исходный не пуст и предикат от значения = true
+     */
+    def filter(f: T => Boolean): Option[T] = this match {
+      case Option.Some(v) => if( f(v) ) Option.Some(v) else Option.None
+      case Option.None => Option.None
+    }
+
+    /**
+     *
+     * Реализовать метод zip, который будет создавать Option от пары значений из 2-х Option
+     */
+    def zip[B](o2: Option[B]): Option[(T,B)] = this match {
+      case Option.Some(v) => o2 match {
+        case Option.Some(v2) => Option.Some((v, v2))
+        case Option.None => Option.None
       }
+      case Option.None => Option.None
+    }
   }
 
   object Option{
@@ -176,82 +205,128 @@ object hof{
       case object None extends Option[Nothing]
   }
 
-
-  /**
-   *
-   * Реализовать метод printIfAny, который будет печатать значение, если оно есть
-   */
-
-
-  /**
-   *
-   * Реализовать метод zip, который будет создавать Option от пары значений из 2-х Option
-   */
-
-
-  /**
-   *
-   * Реализовать метод filter, который будет возвращать не пустой Option
-   * в случае если исходный не пуст и предикат от значения = true
-   */
-
  }
 
  object list {
-   /**
-    *
-    * Реализовать односвязанный иммутабельный список List
-    * Список имеет два случая:
-    * Nil - пустой список
-    * Cons - непустой, содердит первый элемент (голову) и хвост (оставшийся список)
-    */
 
+   sealed trait List[+T]{
+     /**
+      *
+      * Реализовать односвязанный иммутабельный список List
+      * Список имеет два случая:
+      * Nil - пустой список
+      * Cons - непустой, содердит первый элемент (голову) и хвост (оставшийся список)
+      */
 
-    /**
-     * Метод cons, добавляет элемент в голову списка, для этого метода можно воспользоваться названием `::`
-     *
-     */
-
-    /**
-      * Метод mkString возвращает строковое представление списка, с учетом переданного разделителя
+     /**
+      * Метод cons, добавляет элемент в голову списка, для этого метода можно воспользоваться названием `::`
       *
       */
 
-    /**
+     def ::[TT >: T](head: TT): List[TT] = List.Cons(head, this)
+     def cons[TT >: T](head: TT):List[TT] = List.Cons(head, this)
+
+     /* если делать эти методы от типа Т, то компилятор ругается "covariant type T occurs in contravariant position in type T of value head",
+     *  в приницпе с этим понятно, но как это обойти или избежать - нет. [TT >: T] подглядел в оригинальной реализации и выглядит как костыль,
+     *  т.е. List уже получается не от типа Т а от супертипа ТТ, и значит создавая List[Int] в какой-то момент вероятно это уже будет List[AnyVal],
+     *  или я ошибаюсь?
+     */
+
+     /**
+      * Метод mkString возвращает строковое представление списка, с учетом переданного разделителя
+      *
+      */
+     def mkString(sep: String) = {
+
+       def iterator(t: List[T]): String = t match {
+         case List.Cons(h, t) => h + sep + iterator(t)
+         case List.Nil => ""
+       }
+
+       iterator(this)
+     }
+
+     def apply[TT >: T]( args: TT*): List[TT] = {
+
+       def f( _args: Seq[TT]): List[TT] =
+        if(_args.isEmpty) List.Nil
+        else _args.head :: f(_args.tail)
+
+       f(args)
+     }
+
+
+     /**
       * Конструктор, позволяющий создать список из N - го числа аргументов
       * Для этого можно воспользоваться *
-      * 
+      *
       * Например вот этот метод принимает некую последовательность аргументов с типом Int и выводит их на печать
       * def printArgs(args: Int*) = args.foreach(println(_))
       */
 
-    /**
+     /**
       *
       * Реализовать метод reverse который позволит заменить порядок элементов в списке на противоположный
       */
 
-    /**
+     def reverse: List[T] = {
+
+       def f(list: List[T], acc: List[T]): List[T] = {
+         list match{
+           case List.Cons(h, t) => f(t, List.Cons(h, acc))
+           case List.Nil => acc
+         }
+       }
+
+       f(this, List.Nil)
+     }
+
+     /**
       *
       * Реализовать метод map для списка который будет применять некую ф-цию к элементам данного списка
       */
+     def map[B](f: T => B): List[B] = {
 
+       def iter(list: List[T]): List[B] = {
+         list match{
+           case List.Cons(h, t) => List.Cons(f(h), iter(t))
+           case _ => List.Nil
+         }
+       }
 
-    /**
+       iter(this)
+     }
+
+     /**
       *
       * Реализовать метод filter для списка который будет фильтровать список по некому условию
       */
 
-    /**
-      *
-      * Написать функцию incList котрая будет принимать список Int и возвращать список,
-      * где каждый элемент будет увеличен на 1
-      */
+     def filter( f: T => Boolean): List[T] = {
+       this match {
+         case List.Cons(h,t) => if( f(h) ) h :: t.filter(f) else t.filter(f)
+         case List.Nil => List.Nil
+       }
+     }
+   }
 
+   object List{
+     case class Cons[T](head: T, tail: List[T]) extends List[T]
+     case object Nil extends List[Nothing]
+   }
 
-    /**
-      *
-      * Написать функцию shoutString котрая будет принимать список String и возвращать список,
-      * где к каждому элементу будет добавлен префикс в виде '!'
-      */
+   /**
+    *
+    * Написать функцию incList котрая будет принимать список Int и возвращать список,
+    * где каждый элемент будет увеличен на 1
+    */
+  val incList: List[Int] => List[Int] = _.map( _ + 1)
+
+   /**
+    *
+    * Написать функцию shoutString котрая будет принимать список String и возвращать список,
+    * где к каждому элементу будет добавлен префикс в виде '!'
+    */
+   val shoutString: List[String] => List[String] = _.map( _ + "!")
 
  }
